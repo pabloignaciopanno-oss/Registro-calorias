@@ -1,9 +1,9 @@
 const CACHE_NAME = 'calorie-tracker-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-];
+     '/Registro-calorias/',
+     '/Registro-calorias/index.html',
+     '/Registro-calorias/manifest.json'
+   ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
