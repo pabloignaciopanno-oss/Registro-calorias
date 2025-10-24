@@ -2,7 +2,7 @@
   "name": "Registro de Calorías",
   "short_name": "Calorías",
   "description": "Registro diario de calorías y peso",
-  "start_url": "/",
+  "start_url": "/Registro-calorias/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1f2937",
