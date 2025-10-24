@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1f2937">
+  <meta name="description" content="Registro diario de calorías y peso">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
+  <title>Registro de Calorías</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f9fafb; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; }
+    .card { background: white; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    h1 { font-size: 24px; font-weight: 300; margin-bottom: 24px; color: #1f2937; }
+    h2 { font-size: 20px; font-weight: 300; margin-bottom: 16px; color: #1f2937; }
+    .input-group { display: flex; gap: 8px; margin-bottom: 24px; }
+    input { flex: 1; padding: 10px 16px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; }
+    input:focus { outline: none; border-color: #6b7280; }
+    button { padding: 10px 16px; background: #1f2937; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+    button:hover { background: #374151; }
+    button:disabled { background: #d1d5db; cursor: not-allowed; }
+    .btn-blue { background: #2563eb; }
+    .btn-blue:hover { background: #1d4ed8; }
+    .btn-green { background: #059669; }
+    .btn-green:hover { background: #047857; }
+    .btn-gray { background: #9ca3af; }
+    .btn-gray:hover { background: #6b7280; }
+    .btn-red { background: #dc2626; padding: 8px 12px; font-size: 14px; }
+    .btn-red:hover { background: #b91c1c; }
+    .btn-small { padding: 8px 12px; font-size: 14px; }
+    .weight-box { background: #eff6ff; padding: 16px; border-radius: 8px; margin-bottom: 24px; border: 1px solid #bfdbfe; }
+    .weight-current { margin-top: 8px; color: #1e40af; font-weight: 500; }
+    .entry { display: flex; justify-content: space-between; padding: 10px 12px; background: #f9fafb; border-radius: 6px; margin-bottom: 8px; }
+    .positive { color: #059669; font-weight: 500; }
+    .negative { color: #dc2626; font-weight: 500; }
+    .balance { display: flex; justify-content: space-between; padding-top: 16px; border-top: 1px solid #e5e7eb; margin: 16px 0; font-size: 20px; }
+    .history-item { padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+    .history-item:last-child { border-bottom: none; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .history-details { font-size: 14px; color: #6b7280; }
+    .edit-box { background: #f9fafb; padding: 16px; border-radius: 8px; }
+    .edit-entries { margin: 12px 0; }
+    .edit-entry { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: white; border-radius: 6px; margin-bottom: 8px; }
+    .btn-group { display: flex; gap: 8px; }
+  </style>
+</head>
+<body>
+  <div id="app" class="container"></div>
+
+  <script>
+    const data = {
+      entries: [],
+      history: [],
+      currentWeight: null,
+      currentDate: new Date().toLocaleDateString('es-AR'),
+      editingDay: null,
+      editEntries: [],
+      editWeight: ''
+    };
+
+    function loadData() {
+      try {
+        const saved = localStorage.getItem('calorieData');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          data.entries = parsed.entries || [];
+          data.history = parsed.history || [];
+          data.currentWeight = parsed.currentWeight;
+          
+          const savedDate = parsed.currentDate;
+          if (savedDate && savedDate !== data.currentDate && data.entries.length > 0) {
+            const balance = data.entries.reduce((sum, val) => sum + val, 0);
+            data.history.unshift({
+              date: savedDate,
+              balance: balance,
+              entries: [...data.entries],
+              weight: data.currentWeight
+            });
+            data.entries = [];
+            data.currentWeight = null;
+          }
+        }
+      } catch (e) {
+        console.error('Error loading data:', e);
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem('calorieData', JSON.stringify({
+        entries: data.entries,
+        history: data.history,
+        currentWeight: data.currentWeight,
+        currentDate: data.currentDate
+      }));
+    }
+
+    function addEntry() {
+      const input = document.getElementById('calorieInput');
+      const value = parseFloat(input.value);
+      if (!isNaN(value) && value !== 0) {
+        data.entries.push(value);
+        input.value = '';
+        saveData();
+        render();
+      }
+    }
+
+    function saveWeight() {
+      const input = document.getElementById('weightInput');
+      const value = parseFloat(input.value);
+      if (!isNaN(value) && value > 0) {
+        data.currentWeight = value;
+        input.value = '';
+        saveData();
+        render();
+      }
+    }
+
+    function closeDay() {
+      if (data.entries.length > 0) {
+        const balance = data.entries.reduce((sum, val) => sum + val, 0);
+        data.history.unshift({
+          date: data.currentDate,
+          balance: balance,
+          entries: [...data.entries],
+          weight: data.currentWeight
+        });
+        data.entries = [];
+        data.currentWeight = null;
+        saveData();
+        render();
+      }
+    }
+
+    function startEdit(index) {
+      data.editingDay = index;
+      data.editEntries = [...data.history[index].entries];
+      data.editWeight = data.history[index].weight || '';
+      render();
+    }
+
+    function cancelEdit() {
+      data.editingDay = null;
+      data.editEntries = [];
+      data.editWeight = '';
+      render();
+    }
+
+    function addEditEntry() {
+      const input = document.getElementById('editCalorieInput');
+      const value = parseFloat(input.value);
+      if (!isNaN(value) && value !== 0) {
+        data.editEntries.push(value);
+        input.value = '';
+        render();
+      }
+    }
+
+    function deleteEditEntry(index) {
+      data.editEntries.splice(index, 1);
+      render();
+    }
+
+    function saveEdit() {
+      const balance = data.editEntries.reduce((sum, val) => sum + val, 0);
+      const weight = data.editWeight !== '' ? parseFloat(data.editWeight) : null;
+      
+      data.history[data.editingDay] = {
+        ...data.history[data.editingDay],
+        entries: data.editEntries,
+        balance: balance,
+        weight: weight
+      };
+      
+      data.editingDay = null;
+      data.editEntries = [];
+      data.editWeight = '';
+      saveData();
+      render();
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      const balance = data.entries.reduce((sum, val) => sum + val, 0);
+      
+      let html = `
+        <div class="card">
+          <h1>Hoy: ${data.currentDate}</h1>
+          
+          <div class="weight-box">
+            <div class="input-group" style="margin-bottom: 0;">
+              <input type="number" step="0.1" id="weightInput" placeholder="Peso en kg" 
+                     onkeypress="if(event.key==='Enter') saveWeight()">
+              <button class="btn-blue" onclick="saveWeight()">Guardar</button>
+            </div>
+            ${data.currentWeight ? `<div class="weight-current">Peso actual: ${data.currentWeight} kg</div>` : ''}
+          </div>
+
+          <div class="input-group">
+            <input type="number" id="calorieInput" placeholder="Ingresa calorías (+/-)" 
+                   onkeypress="if(event.key==='Enter') addEntry()">
+            <button onclick="addEntry()">+</button>
+          </div>
+
+          <div>
+            ${data.entries.map((entry, i) => `
+              <div class="entry">
+                <span>Entrada ${i + 1}</span>
+                <span class="${entry > 0 ? 'positive' : 'negative'}">${entry > 0 ? '+' : ''}${entry} cal</span>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="balance">
+            <span>Balance:</span>
+            <span class="${balance >= 0 ? 'positive' : 'negative'}">${balance > 0 ? '+' : ''}${balance} cal</span>
+          </div>
+
+          <button onclick="closeDay()" ${data.entries.length === 0 ? 'disabled' : ''} style="width: 100%;">
+            ✓ Cerrar día
+          </button>
+        </div>
+
+        ${data.history.length > 0 ? `
+          <div class="card">
+            <h2>📜 Historial</h2>
+            ${data.history.map((day, i) => `
+              <div class="history-item">
+                ${data.editingDay === i ? `
+                  <div class="edit-box">
+                    <div style="font-weight: 500; margin-bottom: 12px;">${day.date}</div>
+                    
+                    <input type="number" step="0.1" value="${data.editWeight}" 
+                           oninput="data.editWeight = this.value" placeholder="Peso en kg"
+                           style="width: 100%; margin-bottom: 12px;">
+
+                    <div class="input-group">
+                      <input type="number" id="editCalorieInput" placeholder="Nueva entrada (+/-)"
+                             onkeypress="if(event.key==='Enter') addEditEntry()">
+                      <button class="btn-small" onclick="addEditEntry()">+</button>
+                    </div>
+
+                    <div class="edit-entries">
+                      ${data.editEntries.map((entry, j) => `
+                        <div class="edit-entry">
+                          <span class="${entry > 0 ? 'positive' : 'negative'}">${entry > 0 ? '+' : ''}${entry} cal</span>
+                          <button class="btn-red" onclick="deleteEditEntry(${j})">🗑️</button>
+                        </div>
+                      `).join('')}
+                    </div>
+
+                    <div class="balance" style="margin: 12px 0;">
+                      <span>Balance:</span>
+                      <span class="${data.editEntries.reduce((sum, val) => sum + val, 0) >= 0 ? 'positive' : 'negative'}">
+                        ${data.editEntries.reduce((sum, val) => sum + val, 0) > 0 ? '+' : ''}${data.editEntries.reduce((sum, val) => sum + val, 0)} cal
+                      </span>
+                    </div>
+
+                    <div class="btn-group">
+                      <button class="btn-green" onclick="saveEdit()" style="flex: 1;">💾 Guardar</button>
+                      <button class="btn-gray" onclick="cancelEdit()" style="flex: 1;">✕ Cancelar</button>
+                    </div>
+                  </div>
+                ` : `
+                  <div class="history-header">
+                    <span>${day.date}</span>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                      <span class="${day.balance >= 0 ? 'positive' : 'negative'}" style="font-size: 18px;">
+                        ${day.balance > 0 ? '+' : ''}${day.balance} cal
+                      </span>
+                      <button class="btn-small" onclick="startEdit(${i})">✏️</button>
+                    </div>
+                  </div>
+                  <div class="history-details">
+                    ${day.entries.length} entradas${day.weight ? ` • Peso: ${day.weight} kg` : ''}
+                  </div>
+                `}
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      `;
+      
+      app.innerHTML = html;
+    }
+
+    // Service Worker registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('Service Worker registrado'))
+          .catch(err => console.log('Error al registrar SW:', err));
+      });
+    }
+
+    loadData();
+    render();
+  </script>
+</body>
+</html>
