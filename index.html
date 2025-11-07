@@ -32,6 +32,10 @@
     .btn-small { padding: 8px 12px; font-size: 14px; }
     .weight-box { background: #eff6ff; padding: 16px; border-radius: 8px; margin-bottom: 24px; border: 1px solid #bfdbfe; }
     .weight-current { margin-top: 8px; color: #1e40af; font-weight: 500; }
+    .total-box { background: #f0fdf4; padding: 16px; border-radius: 8px; margin-bottom: 24px; border: 1px solid #bbf7d0; }
+    .total-balance { font-size: 22px; font-weight: 600; color: #15803d; margin-bottom: 4px; }
+    .total-balance.negative { color: #dc2626; }
+    .total-days { font-size: 14px; color: #166534; }
     .entry { display: flex; justify-content: space-between; padding: 10px 12px; background: #f9fafb; border-radius: 6px; margin-bottom: 8px; }
     .positive { color: #059669; font-weight: 500; }
     .negative { color: #dc2626; font-weight: 500; }
@@ -94,6 +98,12 @@
         currentWeight: data.currentWeight,
         currentDate: data.currentDate
       }));
+    }
+
+    function getTotalStats() {
+      const totalBalance = data.history.reduce((sum, day) => sum + day.balance, 0);
+      const totalDays = data.history.length;
+      return { totalBalance, totalDays };
     }
 
     function addEntry() {
@@ -184,6 +194,7 @@
     function render() {
       const app = document.getElementById('app');
       const balance = data.entries.reduce((sum, val) => sum + val, 0);
+      const { totalBalance, totalDays } = getTotalStats();
       
       let html = `
         <div class="card">
@@ -226,6 +237,14 @@
         ${data.history.length > 0 ? `
           <div class="card">
             <h2>📜 Historial</h2>
+            
+            <div class="total-box" style="margin-bottom: 16px;">
+              <div class="total-balance ${totalBalance < 0 ? 'negative' : ''}">
+                ${totalBalance > 0 ? '+' : ''}${totalBalance} cal
+              </div>
+              <div class="total-days">Balance total en ${totalDays} día${totalDays !== 1 ? 's' : ''} registrado${totalDays !== 1 ? 's' : ''}</div>
+            </div>
+
             ${data.history.map((day, i) => `
               <div class="history-item">
                 ${data.editingDay === i ? `
